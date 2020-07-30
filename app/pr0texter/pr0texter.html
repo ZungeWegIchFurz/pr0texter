@@ -1,0 +1,167 @@
+<script>
+    /*
+    This function gets the content from the instance of Textbox.io
+    with the ID 'textbox'
+    */
+    var getEditorContent = function () {
+        var editors = textboxio.get('#textbox');
+        var editor = editors[0];
+        return editor.content.get();
+    };
+
+</script>
+<div class="container">
+    <h1 style="color: #ee4d2e; text-align: center;">pr0texter</h1>
+    <div class="hint">
+        <p>Hinweis 1:</p>
+        <p>Es gibt browserabhängig verschiedene Größenbeschränkungen für die maximale Höhe von Elementen (hier: den generierten Bildern). Überschreitet das generierte Bild diese Werte, wird es abgeschnitten. Die Werte sind:</p>
+        <ul>
+            <li>Chrome: 32767 Pixel Höhe</li>
+            <li>Firefox: 32767 Pixel Höhe</li>
+            <li>IE: 8192 Pixel Höhe</li>
+        </ul>
+        <p>Überraschung: IE ist scheiße. Nutzt also am besten Chrome oder FF.</p>
+        <p>Hinweis 2:</p>
+        <p>Bilder, die aus dem Web hinzugefügt werden (als Link), werden nicht im Post generiert (Bereich des Bildes ist einfach schwarz). Lade hierzu die Bilder herunter, die Du verwenden willst und füge sie per Upload von Deinem Device ein.</p>
+    </div>
+    <p style="text-align: center; margin-bottom: 80px;">
+        <a href="mailto:contact.pr0texter@gmail.com">contact.pr0texter@gmail.com</a>
+    </p>
+</div>
+<div id="textbox"></div>
+
+<p align="center" id="buttons">
+    <button onclick="takeScreenShot()">Generiere pr0text</button>
+    <a id="pr0textDownload" title="Download pr0text" class="button hide" download="pr0text.jpg">Download pr0text</a>
+</p>
+
+<p>
+    <h2 id="preview" class="hide" style="color: #ee4d2e; text-align: center;">Vorschau:</h2>
+    <div id="ieWarning" class="hide" style="text-align: center; max-width: 500px; margin: 0 auto">IE-Hinweis: Sollte der Download nicht starten, kann das Vorschaubild via Rechtsklick -> Speichern Unter gespeichert werden.</div>
+</p>
+
+<p align="center">
+    <img id="pr0textJpg" src="" title="pr0text" class="hide" />
+</p>
+
+<script type="text/javascript">
+    function browserIsIE() {
+
+        var ua = window.navigator.userAgent;
+        var msie = ua.indexOf("MSIE ");
+
+        if (msie > 0 || !!navigator.userAgent.match(/Trident.*rv\:11\./))  // If Internet Explorer, return version number
+        {
+            console.log(parseInt(ua.substring(msie + 5, ua.indexOf(".", msie))));
+            return true;
+        }
+        else  // If another browser, return 0
+        {
+            // console.log('otherbrowser');
+            return false;
+        }
+
+        return false;
+    }
+
+    function dataURItoBlob(dataURI) {
+        // convert base64 to raw binary data held in a string
+        // doesn't handle URLEncoded DataURIs - see SO answer #6850276 for code that does this
+        var byteString = atob(dataURI.split(',')[1]);
+
+        // separate out the mime component
+        var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0]
+
+        // write the bytes of the string to an ArrayBuffer
+        var ab = new ArrayBuffer(byteString.length);
+        var ia = new Uint8Array(ab);
+        for (var i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+
+        // write the ArrayBuffer to a blob, and you're done
+        var blob = new Blob([ab], { type: mimeString });
+        return blob;
+    }
+</script>
+
+<script type="text/javascript">
+    var testcanvas = document.createElement('canvas');
+
+    window.takeScreenShot = function () {
+        $('#textbox').css('position', 'absolute');
+        $('#textbox').css('top', 0);
+        $('#textbox').css('left', 0);
+
+        var w = 1052;
+        var h = $('#textbox').height();
+
+        var scaleFactor = 3;
+        var testcanvasPre = new BrowserIndependentCanvas(w, h);
+
+        testcanvas.width = w * scaleFactor;
+        testcanvas.height = h * scaleFactor;
+        testcanvas.style.width = w + 'px';
+        testcanvas.style.height = h + 'px';
+        testcanvas.style.maxHeight = '32767px';
+        if (testcanvas.height > 32767) {
+            testcanvas.style.height = '32767px';
+            testcanvas.height = 32767;
+        }
+        var context = testcanvas.getContext('2d');
+        var newContext = testcanvasPre.getContext('2d');
+
+        context.scale(scaleFactor, scaleFactor);
+        newContext.scale(scaleFactor, scaleFactor);
+
+
+
+        // Trying new scaled way
+        html2canvas(document.getElementById('textbox'), {
+            canvas: testcanvas,
+            allowTaint: true,
+            useCORS: true,
+            background: '#161618',
+            onrendered: function (canvas) {
+                // canvas.setAttribute('crossOrigin', 'anonymous');
+
+                // console.log(canvas.width);
+                console.log(canvas.height);
+
+
+                var w = canvas.width * 1 / scaleFactor;
+                var h = canvas.height * 1 / scaleFactor;
+
+                // Maximalhöhe 15800px aufgrund Größenbeschränkung
+                h > 15800 ? h = 15800 : h;
+
+                var HERMITE = new Hermite_class();
+                HERMITE.resample(canvas, w, h, true, function () {
+
+                    var imgUrl = canvas.toDataURL('image/jpeg', 1).replace("image/jpeg", "image/octet-stream");
+
+                    // If browser is not IE, convert base64 imgUrl to blobUrl for large file download support
+                    if (!browserIsIE()) {
+                        var blobObj = dataURItoBlob(imgUrl);
+                        imgUrl = URL.createObjectURL(blobObj);
+                    }
+
+                    if (browserIsIE()) {
+                        document.getElementById('ieWarning').classList.remove('hide');
+                    }
+
+                    // show result
+                    document.getElementById('pr0textJpg').src = imgUrl;
+                    document.getElementById('pr0textJpg').classList.remove('hide');
+                    document.getElementById('preview').classList.remove('hide');
+
+                    // set href for download link
+                    document.getElementById('pr0textDownload').href = imgUrl;
+                    document.getElementById('pr0textDownload').classList.remove('hide');
+
+                });
+            }
+        });
+        $('#textbox').css('position', 'relative');
+    }
+</script>
